@@ -1,3 +1,17 @@
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+.pytest_cache/
+*.egg-info/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Streamlit secrets (never commit credentials) -- config.toml (theme) stays tracked
+.streamlit/secrets.toml

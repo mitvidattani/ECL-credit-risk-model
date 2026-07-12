@@ -49,6 +49,17 @@ STAGE_LABELS = {"Stage 1": "Stage 1 — Performing", "Stage 2": "Stage 2 — Wat
 COLOR_GROUP_PROJECT = COLOR_PRIMARY  # "this project" bars
 COLOR_GROUP_SECTOR = "#6B7280"       # Indian NBFC sector (RBI)
 COLOR_GROUP_PEER = "#9CA3AF"         # Peer HFCs
+COLOR_GROUP_GODREJ = "#64748B"       # Godrej Capital Group (table only) — a
+                                      # 4th neutral, distinct from the other
+                                      # three grays and from the IFRS 9
+                                      # stage palette (reserved for stages)
+
+GROUP_ROW_COLORS = {
+    "This project": COLOR_GROUP_PROJECT,
+    "Indian NBFC sector": COLOR_GROUP_SECTOR,
+    "Peer HFCs": COLOR_GROUP_PEER,
+    "Godrej Capital Group": COLOR_GROUP_GODREJ,
+}
 
 FONT_STACK = "'Inter', -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
 
@@ -226,6 +237,49 @@ st.markdown(
         margin-right: 6px;
     }}
 
+    /* ---- Benchmark table (custom HTML, matches the KPI card system) ---- */
+    .benchmark-table-card {{
+        background-color: #FFFFFF;
+        border: 1px solid #E5E7EB;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }}
+    .benchmark-table {{
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }}
+    .benchmark-table th {{
+        text-align: left;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: {COLOR_TEXT_SECONDARY};
+        background-color: #F9FAFB;
+        border-bottom: 2px solid {COLOR_PRIMARY};
+        padding: 0.75rem 1rem;
+    }}
+    .benchmark-table td {{
+        text-align: left;
+        vertical-align: top;
+        padding: 0.75rem 1rem;
+        font-size: 0.88rem;
+        color: {COLOR_TEXT_PRIMARY};
+        white-space: normal;
+        word-wrap: break-word;
+        border-bottom: 1px solid #F0F1F3;
+    }}
+    .benchmark-table tbody tr:last-child td {{ border-bottom: none; }}
+    .benchmark-table tbody tr:nth-child(even) {{
+        background-color: #FAFBFC;
+    }}
+    .benchmark-table td.value-cell {{
+        font-weight: 700;
+    }}
+
     /* ---- Section spacing ---- */
     h2, h3 {{ margin-top: 0.25rem !important; color: {COLOR_TEXT_PRIMARY}; }}
     .section-block {{ margin-bottom: 2rem; }}
@@ -256,14 +310,14 @@ st.markdown(
 # share one visual system (same font, same gridline treatment, same
 # background) instead of looking like output from different tools.
 # ---------------------------------------------------------------------------
-def apply_chart_style(fig: go.Figure, height: int = 420) -> go.Figure:
+def apply_chart_style(fig: go.Figure, height: int = 420, margin: dict | None = None, showlegend: bool = False) -> go.Figure:
     fig.update_layout(
         font=dict(family=FONT_STACK, size=12, color=COLOR_TEXT_PRIMARY),
         paper_bgcolor="#FFFFFF",
         plot_bgcolor="#FFFFFF",
-        margin=dict(t=50, b=40, l=60, r=30),
+        margin=margin or dict(t=50, b=40, l=60, r=30),
         height=height,
-        showlegend=False,
+        showlegend=showlegend,
     )
     return fig
 
@@ -321,6 +375,43 @@ def kpi_card_html(label: str, value: str, accent: str = COLOR_PRIMARY, sub: str 
         {sub_html}
     </div>
     """
+
+
+def benchmark_table_html(table: pd.DataFrame) -> str:
+    """Custom HTML table (white card, zebra rows, per-group left accent)
+    so the benchmark table matches the KPI cards instead of looking like
+    a bare default dataframe grid."""
+    rows = []
+    for _, row in table.iterrows():
+        accent = GROUP_ROW_COLORS.get(row["group"], COLOR_TEXT_SECONDARY)
+        rows.append(
+            f'<tr><td style="border-left: 4px solid {accent};">{row["group"]}</td>'
+            f'<td>{row["metric"]}</td>'
+            f'<td class="value-cell">{row["value"]}</td>'
+            f'<td>{row["source"]}</td></tr>'
+        )
+    html = f"""
+    <div class="benchmark-table-card">
+        <table class="benchmark-table">
+            <colgroup>
+                <col style="width:14%"><col style="width:30%"><col style="width:22%"><col style="width:34%">
+            </colgroup>
+            <thead>
+                <tr><th>Group</th><th>Metric</th><th>Value</th><th>Source</th></tr>
+            </thead>
+            <tbody>
+                {''.join(rows)}
+            </tbody>
+        </table>
+    </div>
+    """
+    # Streamlit's markdown renderer follows CommonMark: any line indented
+    # 4+ spaces is parsed as an indented code block, and that check
+    # pre-empts HTML-block recognition entirely. The triple-quoted f-string
+    # above is indented for Python readability, so its first line ("
+    # <div...") was tripping that rule and rendering as a code block
+    # instead of raw HTML. Stripping per-line indentation avoids it.
+    return "\n".join(line.strip() for line in html.strip().splitlines())
 
 
 # ---------------------------------------------------------------------------
@@ -440,7 +531,7 @@ with tab_overview:
                 font=dict(size=15, family=FONT_STACK, color=COLOR_TEXT_PRIMARY),
             )],
         )
-        st.plotly_chart(fig_donut, width="stretch", theme=None)
+        st.plotly_chart(fig_donut, width="stretch", theme=None, config={"displayModeBar": False})
 
     with col_cards:
         for stage in ["Stage 1", "Stage 2", "Stage 3"]:
@@ -518,7 +609,7 @@ with tab_stress:
         xaxis=dict(showgrid=False),
     )
     apply_chart_style(fig_stress, height=440)
-    st.plotly_chart(fig_stress, width="stretch", theme=None)
+    st.plotly_chart(fig_stress, width="stretch", theme=None, config={"displayModeBar": False})
 
 # ---------------------------------------------------------------------------
 # Tab 3: Indian NBFC benchmark context (from notebook 04)
@@ -552,7 +643,7 @@ with tab_india:
          "value": "Not publicly disclosed", "source": "CRISIL / ICRA rating rationale reports, 2025"},
     ])
 
-    st.dataframe(benchmark_table, hide_index=True, width="stretch")
+    st.markdown(benchmark_table_html(benchmark_table), unsafe_allow_html=True)
 
     st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
 
@@ -608,20 +699,22 @@ with tab_india:
         ))
 
     fig_bench.update_layout(
+        title=dict(
+            text="Scale comparison — context only, not a direct equivalence",
+            font=dict(size=16, family=FONT_STACK, color=COLOR_TEXT_PRIMARY),
+        ),
         yaxis=dict(
             categoryorder="array", categoryarray=category_order[::-1],
-            showgrid=True, gridcolor="#E5E7EB",
+            showgrid=True, gridcolor="#E5E7EB", automargin=True,
         ),
         xaxis=dict(title="Rate (%)", showgrid=False, range=[0, 36], tickformat=",.0f"),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-        margin=dict(t=60, b=40, l=320, r=60),
+        # Legend anchored at the bottom (negative y) so it can never collide
+        # with the title (anchored near the top, y close to 1) regardless of
+        # future margin/height tweaks.
+        legend=dict(orientation="h", yanchor="top", y=-0.18, xanchor="center", x=0.5),
     )
-    apply_chart_style(fig_bench, height=460)
-    fig_bench.update_layout(showlegend=True, title=dict(
-        text="Scale comparison — context only, not a direct equivalence",
-        font=dict(size=16, family=FONT_STACK, color=COLOR_TEXT_PRIMARY),
-    ))
-    st.plotly_chart(fig_bench, width="stretch", theme=None)
+    apply_chart_style(fig_bench, height=520, margin=dict(t=70, b=50, l=340, r=60), showlegend=True)
+    st.plotly_chart(fig_bench, width="stretch", theme=None, config={"displayModeBar": False})
 
 # ---------------------------------------------------------------------------
 # Footer

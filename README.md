@@ -32,12 +32,14 @@ is explicit about what does and doesn't transfer.
 
 ```
 ecl-credit-risk-model/
+├── .streamlit/
+│   └── config.toml               # dashboard color theme
 ├── data/
 │   ├── raw/                     # original, untouched data
 │   │   └── german_credit_data.csv
 │   └── processed/                # cleaned data + model outputs
-│       ├── credit_clean.csv
-│       └── ecl_results.csv       # full portfolio: PD, LGD, EAD, stage, ECL
+│       ├── credit_clean.csv      # renamed, verified-clean dataset (notebook 01)
+│       └── ecl_results.csv       # full portfolio: PD, LGD, EAD, stage, ECL (notebook 03)
 ├── models/
 │   └── pd_model.pkl              # trained PD model (joblib)
 ├── notebooks/
@@ -51,9 +53,16 @@ ecl-credit-risk-model/
 │   └── data_prep.py              # loads, cleans, renames columns, saves processed data
 ├── reports/
 │   └── figures/                  # saved plots/exhibits
+├── .gitignore
 ├── README.md
 └── requirements.txt
 ```
+
+The dashboard is a fully interactive, custom-styled Streamlit app — not a
+basic prototype — with a tabbed layout, custom KPI cards, an IFRS 9 stage
+composition donut chart, a live stress-multiplier slider that recomputes
+ECL in real time, and the India benchmark comparison (table + chart) from
+notebook 04.
 
 ## How to reproduce
 
@@ -86,6 +95,19 @@ comparison. Reads `data/processed/ecl_results.csv`, so run notebooks
 
 ## Key findings
 
+- **Model performance**: the Logistic Regression PD model achieves
+  ROC-AUC 0.80 on held-out test data, outperforming the XGBoost
+  comparison model (0.76) on this small, clean dataset (see
+  `notebooks/02_pd_model.ipynb`).
+- **Portfolio ECL**: base-case Expected Credit Loss totals **1,028,795 DM**
+  — **31.4%** of total portfolio exposure (EAD of 3,271,248 DM).
+- **Stress sensitivity**: a 1.5x PD stress shock raises total ECL to
+  **1,239,301 DM**, a **+20.5%** increase, with 138 applicants migrating
+  from Stage 1 to Stage 2.
+- **Stage concentration**: Stage 3 (known historical defaults) accounts
+  for **63.2%** of total portfolio ECL despite being only 36.1% of loan
+  amount — since Stage 3 PD is treated as certain (100%) rather than
+  model-estimated (see `notebooks/03_ecl_calculation.ipynb`).
 - **Indian NBFC context**: our model's base-case ECL rate (31.4% of
   portfolio EAD) sits far above real Indian NBFC sector GNPA (~2.9%-4.2%,
   RBI) and peer HFC GNPA (0.27%-1.5%) — expected, since this dataset's
