@@ -61,8 +61,18 @@ ecl-credit-risk-model/
 pip install -r requirements.txt
 python src/data_prep.py              # builds data/processed/credit_clean.csv
 jupyter notebook notebooks/          # run 01 -> 02 -> 03 -> 04 in order
-streamlit run dashboard/app.py       # interactive dashboard (needs ecl_results.csv)
 ```
+
+## How to run the dashboard
+
+```bash
+streamlit run dashboard/app.py
+```
+
+Opens an interactive view of the ECL results — KPI cards, IFRS 9 stage
+composition, a live stress-scenario slider, and the India benchmark
+comparison. Reads `data/processed/ecl_results.csv`, so run notebooks
+01-03 first if that file doesn't exist yet.
 
 ## Status
 
@@ -73,6 +83,17 @@ streamlit run dashboard/app.py       # interactive dashboard (needs ecl_results.
 - [x] ECL calculation: LGD, EAD, IFRS 9 staging, stress scenario (`notebooks/03_ecl_calculation.ipynb`)
 - [x] Indian NBFC industry benchmarking (`notebooks/04_india_benchmark.ipynb`)
 - [x] Interactive dashboard (`dashboard/app.py`)
+
+## Key findings
+
+- **Indian NBFC context**: our model's base-case ECL rate (31.4% of
+  portfolio EAD) sits far above real Indian NBFC sector GNPA (~2.9%-4.2%,
+  RBI) and peer HFC GNPA (0.27%-1.5%) — expected, since this dataset's
+  defaults are deliberately oversampled for research, not representative
+  of a real loan book. Godrej Capital Group's own book is young/unseasoned
+  per CRISIL/ICRA (2025) — no numeric GNPA disclosed yet — which is
+  exactly the kind of situation this project's stress-testing methodology
+  is built for (see `notebooks/04_india_benchmark.ipynb`).
 
 ## Key caveats (see notebooks for full detail)
 
